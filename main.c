@@ -23,8 +23,9 @@ GtkWidget *window;
 GtkWidget *grd_main, *grd_test;
 
 // widget list
-GtkWidget *btn_exit, *btn_practice, *btn_test, *scr_question, *vpt_question, *box_quizlist, *grd_list_w_scrollbar;
+GtkWidget *btn_exit, *btn_practice, *btn_test, *box_quizlist, *grd_list_w_scrollbar, *btn_back_in_test;
 
+// create new GtkWidget (box) from exam struct
 GtkWidget *create_box_from_exam(exam e, char *title)
 {
 	GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -62,8 +63,64 @@ GtkWidget *create_box_from_exam(exam e, char *title)
 	return box;
 }
 
+// call when Practice button clicked
 static void practice(GtkWidget *widget, gpointer data)
 {
+	gtk_widget_destroy(grd_main);
+	gtk_container_add(GTK_CONTAINER(window), grd_test);
+	gtk_widget_show_all(window);
+}
+
+// call when btn_back_in_test clicked
+static void load_main(GtkWidget *widget, gpointer data)
+{
+	gtk_widget_destroy(grd_test);
+	gtk_container_add(GTK_CONTAINER(window), grd_main);
+	gtk_widget_show_all(window);	
+}
+
+// create gtk window
+static void activate(GtkApplication *app, gpointer user_data)
+{
+	// Load container window
+	gtk_builder_add_from_file(builder, "window.glade", NULL);
+	window = GTK_WIDGET(gtk_builder_get_object(builder, "wdw_main"));
+	g_object_set(window, "application", app, NULL);
+	g_signal_connect_swapped(window, "destroy", G_CALLBACK(g_application_quit), app);
+
+	/********** MAIN MENU *************/
+	// load main menu from file
+	gtk_builder_add_from_file(builder, "menu.glade", NULL);
+	grd_main = GTK_WIDGET(gtk_builder_get_object(builder, "grd_main"));
+	
+	// add menu to window
+	gtk_container_add(GTK_CONTAINER(window), grd_main);
+
+	// load button in main menu
+	btn_practice = GTK_WIDGET(gtk_builder_get_object(builder, "btn_practice"));
+	g_signal_connect(btn_practice, "clicked", G_CALLBACK(practice), NULL);
+	btn_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_test"));
+	btn_exit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exit"));
+	g_signal_connect_swapped(btn_exit, "clicked", G_CALLBACK(g_application_quit), app);
+
+
+	/*********** PRACTICE  *************/
+	// load test menu
+	gtk_builder_add_from_file(builder, "test.glade", NULL);
+	grd_test = GTK_WIDGET(gtk_builder_get_object(builder, "grd_test"));
+
+	// load grid with scrollbar
+	grd_list_w_scrollbar = GTK_WIDGET(gtk_builder_get_object(builder, "grd_list_w_scrollbar"));
+
+	// create new box for quizlist and attach to grid with scrollbar
+	box_quizlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_widget_set_size_request(box_quizlist, 580, -1);
+	gtk_grid_attach(GTK_GRID(grd_list_w_scrollbar), box_quizlist, 0, 0, 1, 1);
+
+	// load buttons
+	btn_back_in_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_in_test"));
+	g_signal_connect(btn_back_in_test, "clicked", G_CALLBACK(load_main), NULL);
+
 	exam q1;
 
 	q1.quesID = 1;
@@ -73,55 +130,12 @@ static void practice(GtkWidget *widget, gpointer data)
 	strcpy(q1.answerC, "dap an c");
 	strcpy(q1.answerD, "dap an d");
 
-	// load test menu
-	gtk_builder_add_from_file(builder, "test.glade", NULL);
-	grd_test = GTK_WIDGET(gtk_builder_get_object(builder, "grd_test"));
-
-	// add menu to window
-	gtk_widget_destroy(grd_main);
-	gtk_container_add(GTK_CONTAINER(window), grd_test);
-
-	// load scroll window question
-	scr_question = GTK_WIDGET(gtk_builder_get_object(builder, "scr_question"));
-	vpt_question = GTK_WIDGET(gtk_builder_get_object(builder, "vpt_question"));
-	grd_list_w_scrollbar = GTK_WIDGET(gtk_builder_get_object(builder, "grd_list_w_scrollbar"));
-
-	// new box for quizlist and attach to grid with scrollbar
-	box_quizlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	gtk_widget_set_size_request(box_quizlist, 580, -1);
-	gtk_grid_attach(GTK_GRID(grd_list_w_scrollbar), box_quizlist, 0, 0, 1, 1);
-
 	// create exam-box from exam struct
+	// TO DO
 	GtkWidget *box1 = create_box_from_exam(q1, "Cau 1");
 
 	// add exam-box to quizlist
 	gtk_box_pack_start(GTK_BOX(box_quizlist), box1, FALSE, FALSE, 0);
-
-	gtk_widget_show_all(grd_test);
-}
-
-static void activate(GtkApplication *app, gpointer user_data)
-{
-	// Load container window
-	gtk_builder_add_from_file(builder, "window.glade", NULL);
-	window = GTK_WIDGET(gtk_builder_get_object(builder, "wdw_main"));
-	g_object_set(window, "application", app, NULL);
-	g_signal_connect_swapped(window, "destroy", G_CALLBACK(g_application_quit), app);
-
-	// load main menu
-	gtk_builder_add_from_file(builder, "menu.glade", NULL);
-	grd_main = GTK_WIDGET(gtk_builder_get_object(builder, "grd_main"));
-
-	btn_practice = GTK_WIDGET(gtk_builder_get_object(builder, "btn_practice"));
-	g_signal_connect(btn_practice, "clicked", G_CALLBACK(practice), grd_main);
-
-	btn_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_test"));
-
-	btn_exit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exit"));
-	g_signal_connect_swapped(btn_exit, "clicked", G_CALLBACK(g_application_quit), app);
-
-	// add menu to window
-	gtk_container_add(GTK_CONTAINER(window), grd_main);
 
 	// show
 	gtk_widget_show_all(window);
