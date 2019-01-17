@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #define BUFF_SIZE 100
+#define DEBUG 1
 
 typedef struct
 {
@@ -11,7 +12,9 @@ typedef struct
 	char answerB[BUFF_SIZE];
 	char answerC[BUFF_SIZE];
 	char answerD[BUFF_SIZE];
-} exam;
+} quiz_t;
+
+GtkApplication *app;
 
 // window = gtk_application_window_new(app);
 GtkBuilder *builder;
@@ -19,14 +22,18 @@ GtkBuilder *builder;
 // main window
 GtkWidget *window;
 
-// grid list
+// important grid list
 GtkWidget *grd_main, *grd_test;
 
-// widget list
-GtkWidget *btn_exit, *btn_practice, *btn_test, *box_quizlist, *grd_list_w_scrollbar, *btn_back_in_test;
+// component widget list
+GtkWidget *btn_exit, *btn_practice, *btn_test, *box_quizlist, *grd_list_w_scrollbar, *btn_back_from_test, *btn_submit;
+
+/*************** FUNCTION LIST ******************/
+GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz);
+GtkWidget *new_grd_main();
 
 // create new GtkWidget (box) from exam struct
-GtkWidget *create_box_from_exam(exam e, char *title)
+GtkWidget *create_box_from_exam(quiz_t e, char *title)
 {
 	GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
@@ -64,89 +71,117 @@ GtkWidget *create_box_from_exam(exam e, char *title)
 }
 
 // call when Practice button clicked
-static void practice(GtkWidget *widget, gpointer data)
+static void show_practice(GtkWidget *widget, gpointer data)
 {
+	quiz_t q1[100];
+
+	int i;
+	for (i = 0; i < 100; i++)
+	{
+		q1[i].quesID = 1;
+		strcpy(q1[i].question, "Help please, how to commit sudoku");
+		strcpy(q1[i].answerA, "dap an a");
+		strcpy(q1[i].answerB, "dap an b");
+		strcpy(q1[i].answerC, "dap an c");
+		strcpy(q1[i].answerD, "dap an d");
+	}
+
+	// destroy other grid
 	gtk_widget_destroy(grd_main);
+
+	// create grid test
+	grd_test = new_grd_test(100, 5, q1);
 	gtk_container_add(GTK_CONTAINER(window), grd_test);
-	gtk_widget_show_all(window);
+	gtk_widget_show_all(grd_test);
 }
 
-// call when btn_back_in_test clicked
-static void load_main(GtkWidget *widget, gpointer data)
+// show main menu
+static void show_main(GtkWidget *widget, gpointer data)
 {
 	gtk_widget_destroy(grd_test);
+	grd_main = new_grd_main();
 	gtk_container_add(GTK_CONTAINER(window), grd_main);
-	gtk_widget_show_all(window);	
+	gtk_widget_show_all(grd_main);
+}
+
+/********** MAIN MENU *************/
+GtkWidget *new_grd_main()
+{
+	// construct builder from file "menu.glade"
+	builder = gtk_builder_new_from_file("glade/menu.glade");
+
+	// load component from builder file
+	// main grid
+	GtkWidget *return_grid = GTK_WIDGET(gtk_builder_get_object(builder, "grd_main"));
+
+	// practice button
+	btn_practice = GTK_WIDGET(gtk_builder_get_object(builder, "btn_practice"));
+	g_signal_connect(btn_practice, "clicked", G_CALLBACK(show_practice), NULL);
+
+	// test button
+	btn_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_test"));
+
+	// exit button
+	btn_exit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exit"));
+	g_signal_connect_swapped(btn_exit, "clicked", G_CALLBACK(g_application_quit), app);
+
+	return return_grid;
+}
+
+/*********** TEST SITE (PRACTICE / EXAM) *************/
+GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz)
+{
+	// load grid test from builder "test.glade"
+	builder = gtk_builder_new_from_file("glade/test.glade");
+	GtkWidget *return_grid = GTK_WIDGET(gtk_builder_get_object(builder, "grd_test"));
+
+	// load grid inside grd_test(with scrollbar)
+	grd_list_w_scrollbar = GTK_WIDGET(gtk_builder_get_object(builder, "grd_list_w_scrollbar"));
+
+	// create new box for quizlist and attach to this grid
+	box_quizlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_widget_set_size_request(box_quizlist, 580, -1);
+	gtk_grid_attach(GTK_GRID(grd_list_w_scrollbar), box_quizlist, 0, 0, 1, 1);
+
+	// submit button
+	btn_submit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_submit"));
+
+	// quit button
+	btn_back_from_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_from_test"));
+	g_signal_connect(btn_back_from_test, "clicked", G_CALLBACK(show_main), app);
+
+	// print each question out
+	GtkWidget *quizbox[num_of_quiz];
+	int i;
+	char title[20];
+	for (i = 0; i < num_of_quiz; i++)
+	{
+		sprintf(title, "Question %d", i + 1);
+		quizbox[i] = create_box_from_exam(quiz[i], title);
+		gtk_box_pack_start(GTK_BOX(box_quizlist), quizbox[i], FALSE, FALSE, 0);
+	}
+
+	return return_grid;
 }
 
 // create gtk window
 static void activate(GtkApplication *app, gpointer user_data)
 {
 	// Load container window
-	gtk_builder_add_from_file(builder, "window.glade", NULL);
+	builder = gtk_builder_new_from_file("glade/window.glade");
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "wdw_main"));
 	g_object_set(window, "application", app, NULL);
 	g_signal_connect_swapped(window, "destroy", G_CALLBACK(g_application_quit), app);
 
-	/********** MAIN MENU *************/
-	// load main menu from file
-	gtk_builder_add_from_file(builder, "menu.glade", NULL);
-	grd_main = GTK_WIDGET(gtk_builder_get_object(builder, "grd_main"));
-	
-	// add menu to window
+	// load menu from file and add to window
+	grd_main = new_grd_main();
 	gtk_container_add(GTK_CONTAINER(window), grd_main);
-
-	// load button in main menu
-	btn_practice = GTK_WIDGET(gtk_builder_get_object(builder, "btn_practice"));
-	g_signal_connect(btn_practice, "clicked", G_CALLBACK(practice), NULL);
-	btn_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_test"));
-	btn_exit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exit"));
-	g_signal_connect_swapped(btn_exit, "clicked", G_CALLBACK(g_application_quit), app);
-
-
-	/*********** PRACTICE  *************/
-	// load test menu
-	gtk_builder_add_from_file(builder, "test.glade", NULL);
-	grd_test = GTK_WIDGET(gtk_builder_get_object(builder, "grd_test"));
-
-	// load grid with scrollbar
-	grd_list_w_scrollbar = GTK_WIDGET(gtk_builder_get_object(builder, "grd_list_w_scrollbar"));
-
-	// create new box for quizlist and attach to grid with scrollbar
-	box_quizlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	gtk_widget_set_size_request(box_quizlist, 580, -1);
-	gtk_grid_attach(GTK_GRID(grd_list_w_scrollbar), box_quizlist, 0, 0, 1, 1);
-
-	// load buttons
-	btn_back_in_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_in_test"));
-	g_signal_connect(btn_back_in_test, "clicked", G_CALLBACK(load_main), NULL);
-
-	exam q1;
-
-	q1.quesID = 1;
-	strcpy(q1.question, "Help please");
-	strcpy(q1.answerA, "dap an a");
-	strcpy(q1.answerB, "dap an b");
-	strcpy(q1.answerC, "dap an c");
-	strcpy(q1.answerD, "dap an d");
-
-	// create exam-box from exam struct
-	// TO DO
-	GtkWidget *box1 = create_box_from_exam(q1, "Cau 1");
-
-	// add exam-box to quizlist
-	gtk_box_pack_start(GTK_BOX(box_quizlist), box1, FALSE, FALSE, 0);
-
-	// show
-	gtk_widget_show_all(window);
+	gtk_widget_show_all(grd_main);
 }
 
 int main(int argc, char *argv[])
 {
-	GtkApplication *app;
 	int status;
-
-	builder = gtk_builder_new();
 
 	app = gtk_application_new("com.tesuto", G_APPLICATION_FLAGS_NONE);
 	g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
