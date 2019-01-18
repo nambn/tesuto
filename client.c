@@ -32,7 +32,7 @@ typedef struct
 	int num_of_question;
 	int time_of_test;
 	int status;
-} rooms;
+} room_t;
 
 char *file_name_questionlist = "client_exam.txt";
 char *file_name_roomlist = "client_room_list.txt";
@@ -44,7 +44,7 @@ int bytes_sent;
 int bytes_received;
 
 quiz_t exam_test[100];
-rooms list_of_room[100];
+room_t list_of_room[100];
 
 int client_sock;
 struct sockaddr_in server_addr;
@@ -58,17 +58,17 @@ GtkBuilder *builder;
 GtkWidget *window;
 
 // important grid list
-GtkWidget *grd_main, *grd_test;
+GtkWidget *grd_main, *grd_test, *grd_room;
 
 // component widget list
-GtkWidget *btn_exit, *btn_practice, *btn_test, *box_quizlist, *vpt_question, *btn_back_from_test, *btn_submit;
+GtkWidget *btn_exit, *btn_practice, *btn_test, *box_quizlist, *box_roomlist, *vpt_question, *vpt_roomlist, *btn_back_from_test, *btn_submit;
 
 /*************** FUNCTION LIST ******************/
 GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz);
 GtkWidget *new_grd_main();
 
 /*************** QUESTION BOX *******************/
-// create new GtkWidget (box) from exam struct
+// create new GtkWidget (box) from quiz struct
 GtkWidget *create_box_from_quiz(quiz_t e, char *title)
 {
 	GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -107,6 +107,44 @@ GtkWidget *create_box_from_quiz(quiz_t e, char *title)
 	gtk_box_pack_start(GTK_BOX(btnbox_ans), radio4, FALSE, FALSE, 0);
 
 	return box;
+}
+
+/*************** SINGLE QUESTION GRID *******************/
+// create new GtkWidget (grid) from room struct
+GtkWidget *create_grid_from_room(room_t r)
+{
+	GtkWidget *grid = gtk_grid_new();
+	gtk_container_set_border_width(GTK_CONTAINER(grid), 10);
+
+	GtkWidget *lbl_id, *lbl_num_of_question, *lbl_time_of_test, *lbl_status, *btn_enter;
+
+	char temp_s[BUFF_SIZE];
+
+	// child 1: room id (label)
+	sprintf(temp_s, "%d", r.roomID);
+	lbl_id = gtk_label_new(temp_s);
+	gtk_grid_attach (GTK_GRID(grid), lbl_id, 0, 0, 1, 1);
+
+	// child 2: status (label)
+	sprintf(temp_s, "%d", r.roomID);
+	lbl_status = gtk_label_new(temp_s);
+	gtk_grid_attach (GTK_GRID(grid), lbl_status, 0, 1, 1, 1);
+
+	// child 3: num_of_quiz (label)
+	sprintf(temp_s, "%d", r.roomID);
+	lbl_num_of_question = gtk_label_new(temp_s);
+	gtk_grid_attach (GTK_GRID(grid), lbl_num_of_question, 1, 0, 1, 1);
+
+	// child 4: time_of_test (label)
+	sprintf(temp_s, "%d", r.roomID);
+	lbl_time_of_test = gtk_label_new(temp_s);
+	gtk_grid_attach (GTK_GRID(grid), lbl_time_of_test, 1, 1, 1, 1);
+
+	// child 5: button enter
+	btn_enter = gtk_button_new_with_label("Enter room");
+	gtk_grid_attach (GTK_GRID(grid), btn_enter, 2, 0, 1, 2);
+
+	return grid;
 }
 
 // call when Practice button clicked
@@ -232,6 +270,10 @@ static void show_result(GtkWidget *widget, gpointer data)
 	gtk_widget_show_all(dia_result);
 }
 
+static void show_roomlist()
+{
+}
+
 /********** MAIN MENU *************/
 GtkWidget *new_grd_main()
 {
@@ -248,6 +290,7 @@ GtkWidget *new_grd_main()
 
 	// test button
 	btn_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_test"));
+	g_signal_connect(btn_test, "clicked", G_CALLBACK(show_roomlist), NULL);
 
 	// exit button
 	btn_exit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exit"));
@@ -268,7 +311,7 @@ GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz)
 
 	// create new empty BOX for quizlist and attach to this viewport
 	box_quizlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-	gtk_widget_set_size_request(box_quizlist, 580, -1);
+	// gtk_widget_set_size_request(box_quizlist, 580, -1);
 	gtk_container_add(GTK_CONTAINER(vpt_question), box_quizlist);
 
 	// print each question in a quiz box then insert box to box list
@@ -289,6 +332,59 @@ GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz)
 	// quit button
 	btn_back_from_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_from_test"));
 	g_signal_connect(btn_back_from_test, "clicked", G_CALLBACK(show_main), NULL);
+
+	return return_grid;
+}
+
+void refresh(){}
+void new_room(){}
+
+/*************** ROOM LIST GRID ***********************/
+GtkWidget *new_grd_room()
+{
+	// lay danh sach phong tu server
+
+	// fake data /////////////////////////
+	int num_of_room = 14;
+	room_t room[num_of_room];
+	int i;
+	for (i = 0; i < num_of_room; i++)
+	{
+		room[i].roomID = 21;
+		room[i].num_of_question = 22;
+		room[i].time_of_test = 23;
+		room[i].status = 1;
+	}
+	////////////////////////////////////////
+
+	// load grid test from builder "test.glade"
+	builder = gtk_builder_new_from_file("glade/room.glade");
+	GtkWidget *return_grid = GTK_WIDGET(gtk_builder_get_object(builder, "grd_room"));
+	
+	vpt_roomlist = GTK_WIDGET(gtk_builder_get_object(builder, "vpt_roomlist"));
+	
+	box_roomlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+	gtk_container_add(GTK_CONTAINER(vpt_roomlist), box_roomlist);
+
+	// print each question in a quiz box then insert box to box list
+	GtkWidget *grd_room[num_of_room];
+	for (i = 0; i < num_of_room; i++)
+	{
+		grd_room[i] = create_grid_from_room(room[i]);
+		gtk_box_pack_start(GTK_BOX(box_roomlist), grd_room[i], FALSE, FALSE, 0);
+	}
+
+	// // refresh button
+	// GtkWidget *btn_refresh = GTK_WIDGET(gtk_builder_get_object(builder, "btn_refresh"));
+	// g_signal_connect(btn_refresh, "clicked", G_CALLBACK(refresh), NULL);
+
+	// // new room button
+	// GtkWidget *btn_newroom = GTK_WIDGET(gtk_builder_get_object(builder, "btn_newroom"));
+	// g_signal_connect(btn_newroom, "clicked", G_CALLBACK(new_room), NULL);
+
+	// // quit button
+	// GtkWidget *btn_back_from_rooms = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_from_rooms"));
+	// g_signal_connect(btn_back_from_rooms, "clicked", G_CALLBACK(show_main), NULL);
 
 	return return_grid;
 }
