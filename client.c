@@ -58,14 +58,16 @@ GtkBuilder *builder;
 GtkWidget *window;
 
 // important grid list
-GtkWidget *grd_main, *grd_test, *grd_room;
+GtkWidget *grd_main, *grd_test, *grd_room, *wdn_input;
 
 // component widget list
-GtkWidget *btn_exit, *btn_practice, *btn_test, *box_quizlist, *box_roomlist, *vpt_question, *vpt_roomlist, *btn_back_from_test, *btn_submit;
+GtkWidget *btn_exit, *btn_practice, *btn_exam, *box_quizlist, *box_roomlist, *vpt_question, *vpt_roomlist, *btn_back_from_test, *btn_submit, *ent_num_of_question, *ent_duration;
 
 /*************** FUNCTION LIST ******************/
 GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz);
 GtkWidget *new_grd_main();
+GtkWidget *new_grd_room();
+static void btn_result_close_clicked(GtkWidget *widget, gpointer data);
 
 /*************** QUESTION BOX *******************/
 // create new GtkWidget (box) from quiz struct
@@ -123,26 +125,26 @@ GtkWidget *create_grid_from_room(room_t r)
 	// child 1: room id (label)
 	sprintf(temp_s, "%d", r.roomID);
 	lbl_id = gtk_label_new(temp_s);
-	gtk_grid_attach (GTK_GRID(grid), lbl_id, 0, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid), lbl_id, 0, 0, 1, 1);
 
 	// child 2: status (label)
 	sprintf(temp_s, "%d", r.roomID);
 	lbl_status = gtk_label_new(temp_s);
-	gtk_grid_attach (GTK_GRID(grid), lbl_status, 0, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid), lbl_status, 0, 1, 1, 1);
 
 	// child 3: num_of_quiz (label)
 	sprintf(temp_s, "%d", r.roomID);
 	lbl_num_of_question = gtk_label_new(temp_s);
-	gtk_grid_attach (GTK_GRID(grid), lbl_num_of_question, 1, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid), lbl_num_of_question, 1, 0, 1, 1);
 
 	// child 4: time_of_test (label)
 	sprintf(temp_s, "%d", r.roomID);
 	lbl_time_of_test = gtk_label_new(temp_s);
-	gtk_grid_attach (GTK_GRID(grid), lbl_time_of_test, 1, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(grid), lbl_time_of_test, 1, 1, 1, 1);
 
 	// child 5: button enter
 	btn_enter = gtk_button_new_with_label("Enter room");
-	gtk_grid_attach (GTK_GRID(grid), btn_enter, 2, 0, 1, 2);
+	gtk_grid_attach(GTK_GRID(grid), btn_enter, 2, 0, 1, 2);
 
 	return grid;
 }
@@ -184,6 +186,7 @@ static void show_practice(GtkWidget *widget, gpointer data)
 static void show_main(GtkWidget *widget, gpointer data)
 {
 	gtk_widget_destroy(grd_test);
+	gtk_widget_destroy(grd_room);
 	grd_main = new_grd_main();
 	gtk_container_add(GTK_CONTAINER(window), grd_main);
 	gtk_widget_show_all(grd_main);
@@ -260,7 +263,7 @@ static void show_result(GtkWidget *widget, gpointer data)
 	GtkWidget *dia_result = GTK_WIDGET(gtk_builder_get_object(builder, "dia_result"));
 
 	GtkButton *btn_result_close = GTK_BUTTON(gtk_builder_get_object(builder, "btn_result_close"));
-	g_signal_connect_swapped(btn_result_close, "clicked", G_CALLBACK(gtk_widget_destroy), dia_result);
+	g_signal_connect(btn_result_close, "clicked", G_CALLBACK(btn_result_close_clicked), dia_result);
 
 	GtkLabel *lbl_test_result = GTK_LABEL(gtk_builder_get_object(builder, "lbl_test_result"));
 	char score_inform[BUFF_SIZE];
@@ -270,8 +273,24 @@ static void show_result(GtkWidget *widget, gpointer data)
 	gtk_widget_show_all(dia_result);
 }
 
+static void btn_result_close_clicked(GtkWidget *widget, gpointer data)
+{
+	gtk_widget_destroy(data);
+	gtk_widget_destroy(grd_test);
+	grd_main = new_grd_main();
+	gtk_container_add(GTK_CONTAINER(window), grd_main);
+	gtk_widget_show_all(grd_main);
+}
+
 static void show_roomlist()
 {
+	// destroy other grid
+	gtk_widget_destroy(grd_main);
+
+	// show grid test
+	grd_room = new_grd_room();
+	gtk_container_add(GTK_CONTAINER(window), grd_room);
+	gtk_widget_show_all(grd_room);
 }
 
 /********** MAIN MENU *************/
@@ -289,8 +308,8 @@ GtkWidget *new_grd_main()
 	g_signal_connect(btn_practice, "clicked", G_CALLBACK(show_practice), NULL);
 
 	// test button
-	btn_test = GTK_WIDGET(gtk_builder_get_object(builder, "btn_test"));
-	g_signal_connect(btn_test, "clicked", G_CALLBACK(show_roomlist), NULL);
+	btn_exam = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exam"));
+	g_signal_connect(btn_exam, "clicked", G_CALLBACK(show_roomlist), NULL);
 
 	// exit button
 	btn_exit = GTK_WIDGET(gtk_builder_get_object(builder, "btn_exit"));
@@ -336,8 +355,44 @@ GtkWidget *new_grd_test(int num_of_quiz, int duration, quiz_t *quiz)
 	return return_grid;
 }
 
-void refresh(){}
-void new_room(){}
+// refresh room list
+void refresh()
+{
+	gtk_widget_destroy(grd_room);
+
+	// show grid room
+	grd_room = new_grd_room();
+	gtk_container_add(GTK_CONTAINER(window), grd_room);
+	gtk_widget_show_all(grd_room);
+}
+
+void on_btn_create_clicked()
+{
+	char *dur = gtk_entry_get_text(GTK_ENTRY(ent_duration));
+	char *no = gtk_entry_get_text(GTK_ENTRY(ent_num_of_question));
+	char mess[BUFF_SIZE];
+	sprintf(mess, "NEW-%d-%d", no, dur);
+}
+
+/************ NEW ROOM ENTRY BOX ****************/
+void new_room()
+{
+	builder = gtk_builder_new_from_file("glade/input.glade");
+	wdn_input = GTK_WIDGET(gtk_builder_get_object(builder, "wdn_input"));
+
+	ent_num_of_question = GTK_WIDGET(gtk_builder_get_object(builder, "ent_num_of_question"));
+	ent_duration = GTK_WIDGET(gtk_builder_get_object(builder, "ent_duration"));
+
+	// create button
+	GtkButton *btn_create_in_input = GTK_BUTTON(gtk_builder_get_object(builder, "btn_create_in_input"));
+	g_signal_connect(btn_create_in_input, "clicked", G_CALLBACK(on_btn_create_clicked), NULL);
+
+	// quit button
+	GtkButton *btn_back_in_input = GTK_BUTTON(gtk_builder_get_object(builder, "btn_back_in_input"));
+	g_signal_connect_swapped(btn_back_in_input, "clicked", G_CALLBACK(gtk_widget_destroy), wdn_input);
+
+	gtk_widget_show_all(wdn_input);
+}
 
 /*************** ROOM LIST GRID ***********************/
 GtkWidget *new_grd_room()
@@ -360,9 +415,9 @@ GtkWidget *new_grd_room()
 	// load grid test from builder "test.glade"
 	builder = gtk_builder_new_from_file("glade/room.glade");
 	GtkWidget *return_grid = GTK_WIDGET(gtk_builder_get_object(builder, "grd_room"));
-	
+
 	vpt_roomlist = GTK_WIDGET(gtk_builder_get_object(builder, "vpt_roomlist"));
-	
+
 	box_roomlist = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_container_add(GTK_CONTAINER(vpt_roomlist), box_roomlist);
 
@@ -374,17 +429,17 @@ GtkWidget *new_grd_room()
 		gtk_box_pack_start(GTK_BOX(box_roomlist), grd_room[i], FALSE, FALSE, 0);
 	}
 
-	// // refresh button
-	// GtkWidget *btn_refresh = GTK_WIDGET(gtk_builder_get_object(builder, "btn_refresh"));
-	// g_signal_connect(btn_refresh, "clicked", G_CALLBACK(refresh), NULL);
+	// refresh button
+	GtkWidget *btn_refresh = GTK_WIDGET(gtk_builder_get_object(builder, "btn_refresh"));
+	g_signal_connect(btn_refresh, "clicked", G_CALLBACK(refresh), NULL);
 
-	// // new room button
-	// GtkWidget *btn_newroom = GTK_WIDGET(gtk_builder_get_object(builder, "btn_newroom"));
-	// g_signal_connect(btn_newroom, "clicked", G_CALLBACK(new_room), NULL);
+	// new room button
+	GtkWidget *btn_newroom = GTK_WIDGET(gtk_builder_get_object(builder, "btn_newroom"));
+	g_signal_connect(btn_newroom, "clicked", G_CALLBACK(new_room), NULL);
 
-	// // quit button
-	// GtkWidget *btn_back_from_rooms = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_from_rooms"));
-	// g_signal_connect(btn_back_from_rooms, "clicked", G_CALLBACK(show_main), NULL);
+	// quit button
+	GtkWidget *btn_back_from_rooms = GTK_WIDGET(gtk_builder_get_object(builder, "btn_back_from_rooms"));
+	g_signal_connect(btn_back_from_rooms, "clicked", G_CALLBACK(show_main), NULL);
 
 	return return_grid;
 }
